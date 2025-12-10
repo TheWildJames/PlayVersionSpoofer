@@ -94,7 +94,7 @@ object UpdateChecker {
                     )
                     
                     // Check if this is a newer version
-                    if (isNewerVersion(tagName, isPrerelease)) {
+                    if (isNewerVersion(tagName, isPrerelease, publishedAt)) {
                         return@withContext Result.success(releaseInfo)
                     }
                     // Continue checking other releases - there might be a newer stable release
@@ -110,7 +110,14 @@ object UpdateChecker {
     /**
      * Check if the given tag represents a newer version
      */
-    private fun isNewerVersion(tagName: String, isPrerelease: Boolean): Boolean {
+    private fun isNewerVersion(tagName: String, isPrerelease: Boolean, publishedAt: String): Boolean {
+        // Handle "latest" tag - always show as available if it's a prerelease
+        if (tagName == "latest") {
+            // For "latest" builds, we can't easily compare versions
+            // So we'll show it as available - users can check the date
+            return true
+        }
+        
         // Handle test builds like "test-123"
         if (tagName.startsWith("test-")) {
             val buildNum = tagName.removePrefix("test-").toIntOrNull() ?: return false

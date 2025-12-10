@@ -57,6 +57,28 @@ jobs:
           name: PlayVersionSpoofer-${{ github.sha }}
           path: app/build/outputs/apk/release/PlayVersionSpoofer.apk
 
+      # Create/update "latest" release on every push to main
+      - name: Update Latest Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            🔄 **Latest Development Build**
+            
+            Automatically updated on every push to main.
+            
+            Commit: ${{ github.sha }}
+            Date: ${{ github.event.head_commit.timestamp }}
+            
+            ⚠️ This is the latest development build and may be unstable.
+          prerelease: true
+          make_latest: false
+          files: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Create a test release when manually triggered with 'test' option
       - name: Create Test Release
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type == 'test'
