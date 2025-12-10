@@ -18,8 +18,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.mymod.playspoofer.R
 import com.mymod.playspoofer.ui.composable.PreferenceKeys
-import com.mymod.playspoofer.ui.composable.rememberStringSharedPreference
 import com.mymod.playspoofer.ui.theme.PlaySpooferTheme
+import com.mymod.playspoofer.util.ConfigManager
 import com.mymod.playspoofer.util.ReleaseInfo
 import com.mymod.playspoofer.util.UpdateChecker
 import com.mymod.playspoofer.xposed.statusIsModuleActivated
@@ -335,30 +335,39 @@ fun UpdateCheckerCard() {
 
 @Composable
 fun VersionSettingsCard() {
-    val versionCodePref = rememberStringSharedPreference(
-        key = PreferenceKeys.KEY_VERSION_CODE,
-        defaultValue = PreferenceKeys.DEFAULT_VERSION_CODE
-    )
-    val versionNamePref = rememberStringSharedPreference(
-        key = PreferenceKeys.KEY_VERSION_NAME,
-        defaultValue = PreferenceKeys.DEFAULT_VERSION_NAME
-    )
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     
-    var versionCodeInput by remember { mutableStateOf(versionCodePref.value) }
-    var versionNameInput by remember { mutableStateOf(versionNamePref.value) }
-    var showSavedMessage by remember { mutableStateOf(false) }
+    // Detect Play Store's actual version as default
+    val playStoreVersion = remember { ConfigManager.detectPlayStoreVersion(context) }
+    val detectedCode = playStoreVersion?.versionCode?.toString() ?: PreferenceKeys.FALLBACK_VERSION_CODE
+    val detectedName = playStoreVersion?.versionName ?: PreferenceKeys.FALLBACK_VERSION_NAME
+    
+    // Current saved config
+    var savedCode by remember { mutableStateOf<String?>(null) }
+    var savedName by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    
+    // Input fields
+    var versionCodeInput by remember { mutableStateOf("") }
+    var versionNameInput by remember { mutableStateOf("") }
+    
+    // Status messages
+    var statusMessage by remember { mutableStateOf<String?>(null) }
+    var isError by remember { mutableStateOf(false) }
+    
+    // Load current config on start
+    LaunchedEffect(Unit) {
+        val config = ConfigManager.readConfig()
+        savedCode = config?.versionCode
+        savedName = config?.versionName
+        versionCodeInput = config?.versionCode ?: PreferenceKeys.MAX_VERSION_CODE
+        versionNameInput = config?.versionName ?: PreferenceKeys.MAX_VERSION_NAME
+        isLoading = false
+    }
     
     // Track if there are unsaved changes
-    val hasUnsavedChanges = versionCodeInput != versionCodePref.value || 
-                           versionNameInput != versionNamePref.value
-    
-    // Update inputs when preferences change externally
-    LaunchedEffect(versionCodePref.value, versionNamePref.value) {
-        if (!hasUnsavedChanges) {
-            versionCodeInput = versionCodePref.value
-            versionNameInput = versionNamePref.value
-        }
-    }
+    val hasUnsavedChanges = !isLoading && (versionCodeInput != (savedCode ?: "") || versionNameInput != (savedName ?: ""))
     
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -376,12 +385,21 @@ fun VersionSettingsCard() {
             
             Spacer(modifier = Modifier.height(4.dp))
             
-            // Current saved values display
+            // Show detected Play Store version
             Text(
-                text = stringResource(R.string.current_values, versionCodePref.value, versionNamePref.value),
+                text = stringResource(R.string.detected_version, detectedCode, detectedName),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            
+            // Show current spoofed values if set
+            if (savedCode != null && savedName != null) {
+                Text(
+                    text = stringResource(R.string.current_values, savedCode!!, savedName!!),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -389,16 +407,16 @@ fun VersionSettingsCard() {
             OutlinedTextField(
                 value = versionCodeInput,
                 onValueChange = { newValue ->
-                    // Only allow numeric input
                     if (newValue.all { it.isDigit() }) {
                         versionCodeInput = newValue
                     }
                 },
                 label = { Text(stringResource(R.string.version_code_label)) },
-                placeholder = { Text(PreferenceKeys.DEFAULT_VERSION_CODE) },
+                placeholder = { Text(PreferenceKeys.MAX_VERSION_CODE) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -408,38 +426,83 @@ fun VersionSettingsCard() {
                 value = versionNameInput,
                 onValueChange = { versionNameInput = it },
                 label = { Text(stringResource(R.string.version_name_label)) },
-                placeholder = { Text(PreferenceKeys.DEFAULT_VERSION_NAME) },
+                placeholder = { Text(PreferenceKeys.MAX_VERSION_NAME) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Preset buttons row
+            // Preset buttons row 1: Min and Max
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Set Default Button
                 OutlinedButton(
                     onClick = {
-                        versionCodeInput = PreferenceKeys.DEFAULT_VERSION_CODE
-                        versionNameInput = PreferenceKeys.DEFAULT_VERSION_NAME
+                        versionCodeInput = PreferenceKeys.MIN_VERSION_CODE
+                        versionNameInput = PreferenceKeys.MIN_VERSION_NAME
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
                 ) {
-                    Text(stringResource(R.string.set_default))
+                    Text(stringResource(R.string.set_min))
                 }
                 
-                // Set Max Button
                 OutlinedButton(
                     onClick = {
                         versionCodeInput = PreferenceKeys.MAX_VERSION_CODE
                         versionNameInput = PreferenceKeys.MAX_VERSION_NAME
                     },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
                 ) {
                     Text(stringResource(R.string.set_max))
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Preset buttons row 2: Default (detected) and Reset
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        versionCodeInput = detectedCode
+                        versionNameInput = detectedName
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text(stringResource(R.string.set_default))
+                }
+                
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            isLoading = true
+                            val success = ConfigManager.deleteConfig()
+                            if (success) {
+                                savedCode = null
+                                savedName = null
+                                versionCodeInput = PreferenceKeys.MAX_VERSION_CODE
+                                versionNameInput = PreferenceKeys.MAX_VERSION_NAME
+                                statusMessage = context.getString(R.string.config_reset)
+                                isError = false
+                            } else {
+                                statusMessage = context.getString(R.string.config_reset_failed)
+                                isError = true
+                            }
+                            isLoading = false
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !isLoading
+                ) {
+                    Text(stringResource(R.string.reset_config))
                 }
             }
             
@@ -449,30 +512,51 @@ fun VersionSettingsCard() {
                 
                 Button(
                     onClick = {
-                        val codeToSave = versionCodeInput.ifBlank { PreferenceKeys.DEFAULT_VERSION_CODE }
-                        val nameToSave = versionNameInput.ifBlank { PreferenceKeys.DEFAULT_VERSION_NAME }
-                        versionCodePref.updateValue(codeToSave)
-                        versionNamePref.updateValue(nameToSave)
-                        showSavedMessage = true
+                        scope.launch {
+                            isLoading = true
+                            val codeToSave = versionCodeInput.ifBlank { PreferenceKeys.MAX_VERSION_CODE }
+                            val nameToSave = versionNameInput.ifBlank { PreferenceKeys.MAX_VERSION_NAME }
+                            
+                            val success = ConfigManager.writeConfig(codeToSave, nameToSave)
+                            if (success) {
+                                savedCode = codeToSave
+                                savedName = nameToSave
+                                statusMessage = context.getString(R.string.settings_saved)
+                                isError = false
+                            } else {
+                                statusMessage = context.getString(R.string.save_failed)
+                                isError = true
+                            }
+                            isLoading = false
+                        }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isLoading
                 ) {
-                    Text(stringResource(R.string.save_settings))
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text(stringResource(R.string.save_settings))
+                    }
                 }
             }
             
-            if (showSavedMessage) {
+            // Status message
+            if (statusMessage != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.settings_saved),
+                    text = statusMessage!!,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
                 
-                // Auto-hide the message after a short delay
-                LaunchedEffect(showSavedMessage) {
-                    kotlinx.coroutines.delay(2000)
-                    showSavedMessage = false
+                LaunchedEffect(statusMessage) {
+                    kotlinx.coroutines.delay(3000)
+                    statusMessage = null
                 }
             }
             

@@ -37,10 +37,16 @@
     <string name="settings_title">Version Settings</string>
     <string name="version_code_label">Version Code</string>
     <string name="version_name_label">Version Name</string>
-    <string name="current_values">Current: %1$s / %2$s</string>
+    <string name="detected_version">Play Store version: %1$s / %2$s</string>
+    <string name="current_values">Spoofed to: %1$s / %2$s</string>
     <string name="save_settings">Save Changes</string>
     <string name="set_default">Default</string>
     <string name="set_max">Max</string>
+    <string name="set_min">Min</string>
+    <string name="reset_config">Reset</string>
     <string name="settings_saved">✓ Settings saved! Restart Play Store to apply.</string>
-    <string name="settings_note">Note: After changing values, restart Google Play Store for changes to take effect.</string>
+    <string name="save_failed">✗ Failed to save. Make sure you have root access.</string>
+    <string name="config_reset">✓ Config reset! Restart Play Store to apply.</string>
+    <string name="config_reset_failed">✗ Failed to reset config.</string>
+    <string name="settings_note">Note: Requires root. Restart Play Store after changes.</string>
 </resources>

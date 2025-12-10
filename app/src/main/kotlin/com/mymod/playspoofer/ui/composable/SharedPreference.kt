@@ -21,10 +21,16 @@ object PreferenceKeys {
     const val PREFS_NAME = "spoofer_settings"
     const val KEY_VERSION_CODE = "version_code"
     const val KEY_VERSION_NAME = "version_name"
-    const val DEFAULT_VERSION_CODE = "99999999"
-    const val DEFAULT_VERSION_NAME = "999.999.999"
-    const val MAX_VERSION_CODE = "2147483647"  // Int.MAX_VALUE (safe for all Android versions)
-    const val MAX_VERSION_NAME = "9999.9999.9999"
+    
+    // These will be detected from Play Store - fallbacks if detection fails
+    const val FALLBACK_VERSION_CODE = "99999999"
+    const val FALLBACK_VERSION_NAME = "999.999.999"
+    
+    // Preset values
+    const val MAX_VERSION_CODE = "9999999"
+    const val MAX_VERSION_NAME = "999.999.999"
+    const val MIN_VERSION_CODE = "0"
+    const val MIN_VERSION_NAME = "0.0.0"
 }
 
 /**

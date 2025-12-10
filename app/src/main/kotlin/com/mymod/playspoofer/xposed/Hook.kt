@@ -5,43 +5,66 @@ import androidx.annotation.Keep
 import com.mymod.playspoofer.BuildConfig
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XSharedPreferences
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam
+import java.io.File
 
 @Keep
 class Hook : IXposedHookLoadPackage {
     companion object {
         private const val PLAY_STORE_PKG = "com.android.vending"
-        private const val PREFS_NAME = "spoofer_settings"
-        private const val KEY_VERSION_CODE = "version_code"
-        private const val KEY_VERSION_NAME = "version_name"
-        private const val DEFAULT_VERSION_CODE = "99999999"
-        private const val DEFAULT_VERSION_NAME = "999.999.999"
+        private const val CONFIG_FILE = "/data/local/tmp/playspoofer_config.txt"
+        private const val FALLBACK_VERSION_CODE = 99999999L
+        private const val FALLBACK_VERSION_NAME = "999.999.999"
 
         /** 标记是否已经在第一次 Hook 成功时打印过日志 */
         @Volatile
         private var hasHookedPlayStore = false
         
-        private var prefs: XSharedPreferences? = null
+        // Cached config values
+        private var cachedVersionCode: Long? = null
+        private var cachedVersionName: String? = null
+        private var lastConfigRead: Long = 0
     }
     
-    private fun getPrefs(): XSharedPreferences? {
-        if (prefs == null) {
-            prefs = XSharedPreferences(BuildConfig.APPLICATION_ID, PREFS_NAME)
-            prefs?.makeWorldReadable()
+    private fun readConfig() {
+        // Re-read config every 5 seconds at most
+        val now = System.currentTimeMillis()
+        if (now - lastConfigRead < 5000 && cachedVersionCode != null) {
+            return
         }
-        prefs?.reload()
-        return prefs
+        lastConfigRead = now
+        
+        try {
+            val configFile = File(CONFIG_FILE)
+            if (configFile.exists() && configFile.canRead()) {
+                val lines = configFile.readLines()
+                for (line in lines) {
+                    val parts = line.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        when (parts[0].trim()) {
+                            "version_code" -> cachedVersionCode = parts[1].trim().toLongOrNull()
+                            "version_name" -> cachedVersionName = parts[1].trim()
+                        }
+                    }
+                }
+                Log.i("Config loaded: code=${cachedVersionCode}, name=${cachedVersionName}")
+            } else {
+                Log.i("Config file not found or not readable, using defaults")
+            }
+        } catch (e: Exception) {
+            Log.e("Failed to read config: ${e.message}", e)
+        }
     }
     
     private fun getVersionCode(): Long {
-        val codeStr = getPrefs()?.getString(KEY_VERSION_CODE, DEFAULT_VERSION_CODE) ?: DEFAULT_VERSION_CODE
-        return codeStr.toLongOrNull() ?: DEFAULT_VERSION_CODE.toLong()
+        readConfig()
+        return cachedVersionCode ?: FALLBACK_VERSION_CODE
     }
     
     private fun getVersionName(): String {
-        return getPrefs()?.getString(KEY_VERSION_NAME, DEFAULT_VERSION_NAME) ?: DEFAULT_VERSION_NAME
+        readConfig()
+        return cachedVersionName ?: FALLBACK_VERSION_NAME
     }
 
     override fun handleLoadPackage(lpparam: LoadPackageParam) {
