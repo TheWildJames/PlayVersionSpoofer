@@ -1,6 +1,7 @@
 package com.mymod.playspoofer.ui.composable
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -14,6 +15,86 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.reflect.KProperty
+
+// Constants for preference keys
+object PreferenceKeys {
+    const val PREFS_NAME = "spoofer_settings"
+    const val KEY_VERSION_CODE = "version_code"
+    const val KEY_VERSION_NAME = "version_name"
+    const val DEFAULT_VERSION_CODE = "99999999"
+    const val DEFAULT_VERSION_NAME = "999.999.999"
+}
+
+/**
+ * Get SharedPreferences with world-readable mode for Xposed compatibility
+ */
+@Suppress("DEPRECATION")
+fun getWorldReadablePrefs(context: Context): SharedPreferences {
+    return context.getSharedPreferences(PreferenceKeys.PREFS_NAME, Context.MODE_WORLD_READABLE)
+}
+
+@Composable
+fun rememberStringSharedPreference(
+    key: String,
+    defaultValue: String,
+): StringSharedPreference {
+    val context = LocalContext.current
+    val preference = remember(key) {
+        StringSharedPreference(context, key, defaultValue)
+    }
+
+    DisposableEffect(preference) {
+        onDispose {
+            preference.clean()
+        }
+    }
+
+    return preference
+}
+
+class StringSharedPreference(
+    context: Context,
+    private val key: String,
+    private val defaultValue: String,
+) {
+    @Suppress("DEPRECATION")
+    private val sharedPreferences = runCatching {
+        context.getSharedPreferences(PreferenceKeys.PREFS_NAME, Context.MODE_WORLD_READABLE)
+    }.getOrNull()
+
+    private val listener = OnSharedPreferenceChangeListener { sharedPreferences, changedKey ->
+        if (changedKey != key) {
+            return@OnSharedPreferenceChangeListener
+        }
+        value = sharedPreferences.getString(key, defaultValue) ?: defaultValue
+    }
+
+    init {
+        sharedPreferences?.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    private val prefsValue get() = sharedPreferences?.getString(key, defaultValue) ?: defaultValue
+
+    var value by mutableStateOf(prefsValue)
+        private set
+
+    fun setValue(newValue: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            sharedPreferences?.edit(commit = true) { putString(key, newValue) }
+            value = newValue
+        }
+    }
+
+    operator fun getValue(thisObj: Any?, property: KProperty<*>) = value
+
+    operator fun setValue(thisObj: Any?, property: KProperty<*>, value: String) {
+        setValue(value)
+    }
+
+    fun clean() {
+        sharedPreferences?.unregisterOnSharedPreferenceChangeListener(listener)
+    }
+}
 
 @Composable
 fun rememberBooleanSharedPreference(

@@ -17,8 +17,17 @@
     <string name="status_activated_desc">模块已正常激活，可以开始使用</string>
     <string name="status_not_activated_desc">请在Xposed框架中激活此模块</string>
     <string name="usage_instructions">使用说明</string>
-    <string name="usage_description">本模块会动态修改Google Play Store的版本号信息为999.999.999，以阻止Play Store更新自身。</string>
+    <string name="usage_description">本模块会动态修改Google Play Store的版本号信息为您的自定义值，以阻止Play Store更新自身。</string>
     <string name="step_1">1. 确保在Xposed框架中激活此模块</string>
     <string name="step_2">2. 确保模块作用域仅包含Google Play Store</string>
     <string name="step_3">3. 重启Google Play Store即可生效</string>
+    
+    <!-- Version Settings -->
+    <string name="settings_title">版本设置</string>
+    <string name="version_code_label">版本代码</string>
+    <string name="version_name_label">版本名称</string>
+    <string name="save_settings">保存</string>
+    <string name="reset_defaults">重置</string>
+    <string name="settings_saved">✓ 设置已保存！重启Play Store以应用更改。</string>
+    <string name="settings_note">注意：更改值后，需要重启Google Play Store才能生效。</string>
 </resources>
