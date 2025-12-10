@@ -4,11 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -17,7 +20,10 @@ import com.mymod.playspoofer.R
 import com.mymod.playspoofer.ui.composable.PreferenceKeys
 import com.mymod.playspoofer.ui.composable.rememberStringSharedPreference
 import com.mymod.playspoofer.ui.theme.PlaySpooferTheme
+import com.mymod.playspoofer.util.ReleaseInfo
+import com.mymod.playspoofer.util.UpdateChecker
 import com.mymod.playspoofer.xposed.statusIsModuleActivated
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,12 +44,20 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    val scrollState = rememberScrollState()
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+            .padding(16.dp)
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.Top
     ) {
+        // Update checker card
+        UpdateCheckerCard()
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
         // 标题卡片
         Card(
             modifier = Modifier
@@ -52,12 +66,24 @@ fun MainScreen() {
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)
-            ) {                Text(
-                    text = stringResource(R.string.app_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.app_title),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "v${UpdateChecker.currentVersionName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(8.dp))
                 
@@ -76,7 +102,8 @@ fun MainScreen() {
                             }
                         ),
                         modifier = Modifier.padding(end = 8.dp)
-                    ) {                        Text(
+                    ) {
+                        Text(
                             text = if (isActivated) stringResource(R.string.status_activated) else stringResource(R.string.status_not_activated),
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.bodySmall,
@@ -87,7 +114,7 @@ fun MainScreen() {
                             }
                         )
                     }
-                      Text(
+                    Text(
                         text = if (isActivated) {
                             stringResource(R.string.status_activated_desc)
                         } else {
@@ -99,7 +126,8 @@ fun MainScreen() {
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                  // 使用说明
+                
+                // 使用说明
                 Text(
                     text = stringResource(R.string.usage_instructions),
                     style = MaterialTheme.typography.titleMedium,
@@ -107,7 +135,8 @@ fun MainScreen() {
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
-                  Text(
+                
+                Text(
                     text = stringResource(R.string.usage_description),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -115,7 +144,8 @@ fun MainScreen() {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Spacer(modifier = Modifier.height(4.dp))
-                  Text(
+                
+                Text(
                     text = stringResource(R.string.step_1),
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -136,6 +166,170 @@ fun MainScreen() {
         
         // Custom Version Settings Card
         VersionSettingsCard()
+        
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun UpdateCheckerCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    var isChecking by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<ReleaseInfo?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var hasChecked by remember { mutableStateOf(false) }
+    
+    // Auto-check on first load
+    LaunchedEffect(Unit) {
+        isChecking = true
+        UpdateChecker.checkForUpdates(includePrerelease = true).fold(
+            onSuccess = { release ->
+                updateInfo = release
+                errorMessage = null
+            },
+            onFailure = { error ->
+                errorMessage = error.message
+            }
+        )
+        isChecking = false
+        hasChecked = true
+    }
+    
+    // Only show card if there's an update, error, or checking
+    if (isChecking || updateInfo != null || (hasChecked && errorMessage == null && updateInfo == null)) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    updateInfo != null -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surface
+                }
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.update_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (updateInfo != null) {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                    )
+                    
+                    if (!isChecking) {
+                        TextButton(
+                            onClick = {
+                                scope.launch {
+                                    isChecking = true
+                                    errorMessage = null
+                                    UpdateChecker.checkForUpdates(includePrerelease = true).fold(
+                                        onSuccess = { release ->
+                                            updateInfo = release
+                                            errorMessage = null
+                                        },
+                                        onFailure = { error ->
+                                            errorMessage = error.message
+                                        }
+                                    )
+                                    isChecking = false
+                                    hasChecked = true
+                                }
+                            }
+                        ) {
+                            Text(stringResource(R.string.update_check))
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                when {
+                    isChecking -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.update_checking),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                    updateInfo != null -> {
+                        val release = updateInfo!!
+                        Text(
+                            text = stringResource(
+                                R.string.update_available,
+                                release.name
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        
+                        if (release.isPrerelease) {
+                            Text(
+                                text = stringResource(R.string.update_prerelease),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (release.downloadUrl != null) {
+                                Button(
+                                    onClick = { UpdateChecker.downloadApk(context, release) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.update_download))
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { UpdateChecker.openReleasePage(context, release) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.update_view))
+                            }
+                        }
+                    }
+                    hasChecked && updateInfo == null && errorMessage == null -> {
+                        Text(
+                            text = stringResource(R.string.update_up_to_date),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    errorMessage != null -> {
+                        Text(
+                            text = stringResource(R.string.update_error, errorMessage ?: "Unknown"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -22,6 +22,17 @@
     <string name="step_2">2. Ensure module scope only includes Google Play Store</string>
     <string name="step_3">3. Restart Google Play Store to take effect</string>
     
+    <!-- Update Checker -->
+    <string name="update_title">Updates</string>
+    <string name="update_check">Check</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_available">New version available: %1$s</string>
+    <string name="update_prerelease">⚠️ This is a test/pre-release build</string>
+    <string name="update_download">Download</string>
+    <string name="update_view">View Release</string>
+    <string name="update_up_to_date">✓ You\'re up to date!</string>
+    <string name="update_error">Error checking updates: %1$s</string>
+    
     <!-- Version Settings -->
     <string name="settings_title">Version Settings</string>
     <string name="version_code_label">Version Code</string>
