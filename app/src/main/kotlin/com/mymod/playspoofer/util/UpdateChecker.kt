@@ -111,28 +111,27 @@ object UpdateChecker {
      * Check if the given tag represents a newer version
      */
     private fun isNewerVersion(tagName: String, isPrerelease: Boolean, publishedAt: String): Boolean {
-        // Handle "latest" tag - always show as available if it's a prerelease
+        // Skip "latest" tag - it's a rolling release that we can't version track
         if (tagName == "latest") {
-            // For "latest" builds, we can't easily compare versions
-            // So we'll show it as available - users can check the date
-            return true
+            return false
         }
         
-        // Handle test builds like "test-123"
+        // Skip test builds - they use GitHub run numbers which don't match our versionCode
+        // Users can manually check GitHub releases for test builds
         if (tagName.startsWith("test-")) {
-            val buildNum = tagName.removePrefix("test-").toIntOrNull() ?: return false
-            // Compare against current version code for test builds
-            // Test builds are newer if their build number is higher than current version code
-            return buildNum > currentVersionCode
+            return false
         }
         
-        // Handle version tags like "v1.3" or "1.3"
+        // Only check proper versioned releases (v1.3, v1.4, v2.0, etc.)
         val versionStr = tagName.removePrefix("v")
         val parts = versionStr.split(".")
         
+        // Must have at least major.minor format
+        if (parts.size < 2) return false
+        
         try {
-            val remoteMajor = parts.getOrNull(0)?.toIntOrNull() ?: 0
-            val remoteMinor = parts.getOrNull(1)?.toIntOrNull() ?: 0
+            val remoteMajor = parts.getOrNull(0)?.toIntOrNull() ?: return false
+            val remoteMinor = parts.getOrNull(1)?.toIntOrNull() ?: return false
             val remotePatch = parts.getOrNull(2)?.toIntOrNull() ?: 0
             
             val currentParts = currentVersionName.split(".")
@@ -149,8 +148,7 @@ object UpdateChecker {
                 else -> false
             }
         } catch (e: Exception) {
-            // If parsing fails, assume it's newer (to be safe)
-            return true
+            return false
         }
     }
     
