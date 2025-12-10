@@ -94,12 +94,10 @@ object UpdateChecker {
                     )
                     
                     // Check if this is a newer version
-                    if (isNewerVersion(tagName)) {
+                    if (isNewerVersion(tagName, isPrerelease)) {
                         return@withContext Result.success(releaseInfo)
-                    } else {
-                        // First release we find that's not newer means we're up to date
-                        return@withContext Result.success(null)
                     }
+                    // Continue checking other releases - there might be a newer stable release
                 }
                 
                 Result.success(null)
@@ -112,13 +110,13 @@ object UpdateChecker {
     /**
      * Check if the given tag represents a newer version
      */
-    private fun isNewerVersion(tagName: String): Boolean {
+    private fun isNewerVersion(tagName: String, isPrerelease: Boolean): Boolean {
         // Handle test builds like "test-123"
         if (tagName.startsWith("test-")) {
             val buildNum = tagName.removePrefix("test-").toIntOrNull() ?: return false
-            // Test builds are always considered newer if build number is higher
-            // We use a simple heuristic: test builds with number > 100 are likely newer
-            return buildNum > 0
+            // Compare against current version code for test builds
+            // Test builds are newer if their build number is higher than current version code
+            return buildNum > currentVersionCode
         }
         
         // Handle version tags like "v1.3" or "1.3"
