@@ -23,6 +23,8 @@ object PreferenceKeys {
     const val KEY_VERSION_NAME = "version_name"
     const val DEFAULT_VERSION_CODE = "99999999"
     const val DEFAULT_VERSION_NAME = "999.999.999"
+    const val MAX_VERSION_CODE = "2147483647"  // Int.MAX_VALUE (safe for all Android versions)
+    const val MAX_VERSION_NAME = "9999.9999.9999"
 }
 
 /**

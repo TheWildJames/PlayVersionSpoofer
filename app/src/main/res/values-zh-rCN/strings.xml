@@ -26,8 +26,10 @@
     <string name="settings_title">版本设置</string>
     <string name="version_code_label">版本代码</string>
     <string name="version_name_label">版本名称</string>
-    <string name="save_settings">保存</string>
-    <string name="reset_defaults">重置</string>
+    <string name="current_values">当前值: %1$s / %2$s</string>
+    <string name="save_settings">保存更改</string>
+    <string name="set_default">默认值</string>
+    <string name="set_max">最大值</string>
     <string name="settings_saved">✓ 设置已保存！重启Play Store以应用更改。</string>
     <string name="settings_note">注意：更改值后，需要重启Google Play Store才能生效。</string>
 </resources>

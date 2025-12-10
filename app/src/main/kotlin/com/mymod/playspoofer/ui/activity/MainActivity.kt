@@ -154,10 +154,16 @@ fun VersionSettingsCard() {
     var versionNameInput by remember { mutableStateOf(versionNamePref.value) }
     var showSavedMessage by remember { mutableStateOf(false) }
     
-    // Update inputs when preferences change
+    // Track if there are unsaved changes
+    val hasUnsavedChanges = versionCodeInput != versionCodePref.value || 
+                           versionNameInput != versionNamePref.value
+    
+    // Update inputs when preferences change externally
     LaunchedEffect(versionCodePref.value, versionNamePref.value) {
-        versionCodeInput = versionCodePref.value
-        versionNameInput = versionNamePref.value
+        if (!hasUnsavedChanges) {
+            versionCodeInput = versionCodePref.value
+            versionNameInput = versionNamePref.value
+        }
     }
     
     Card(
@@ -172,6 +178,15 @@ fun VersionSettingsCard() {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Current saved values display
+            Text(
+                text = stringResource(R.string.current_values, versionCodePref.value, versionNamePref.value),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Spacer(modifier = Modifier.height(12.dp))
@@ -206,25 +221,38 @@ fun VersionSettingsCard() {
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Preset buttons row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Reset Button
+                // Set Default Button
                 OutlinedButton(
                     onClick = {
                         versionCodeInput = PreferenceKeys.DEFAULT_VERSION_CODE
                         versionNameInput = PreferenceKeys.DEFAULT_VERSION_NAME
-                        versionCodePref.updateValue(PreferenceKeys.DEFAULT_VERSION_CODE)
-                        versionNamePref.updateValue(PreferenceKeys.DEFAULT_VERSION_NAME)
-                        showSavedMessage = true
-                    }
+                    },
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(stringResource(R.string.reset_defaults))
+                    Text(stringResource(R.string.set_default))
                 }
                 
-                // Save Button
+                // Set Max Button
+                OutlinedButton(
+                    onClick = {
+                        versionCodeInput = PreferenceKeys.MAX_VERSION_CODE
+                        versionNameInput = PreferenceKeys.MAX_VERSION_NAME
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.set_max))
+                }
+            }
+            
+            // Show Save button only when there are unsaved changes
+            if (hasUnsavedChanges) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 Button(
                     onClick = {
                         val codeToSave = versionCodeInput.ifBlank { PreferenceKeys.DEFAULT_VERSION_CODE }
@@ -232,7 +260,8 @@ fun VersionSettingsCard() {
                         versionCodePref.updateValue(codeToSave)
                         versionNamePref.updateValue(nameToSave)
                         showSavedMessage = true
-                    }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.save_settings))
                 }
