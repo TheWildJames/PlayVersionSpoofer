@@ -216,8 +216,8 @@ fun VersionSettingsCard() {
                     onClick = {
                         versionCodeInput = PreferenceKeys.DEFAULT_VERSION_CODE
                         versionNameInput = PreferenceKeys.DEFAULT_VERSION_NAME
-                        versionCodePref.setValue(PreferenceKeys.DEFAULT_VERSION_CODE)
-                        versionNamePref.setValue(PreferenceKeys.DEFAULT_VERSION_NAME)
+                        versionCodePref.updateValue(PreferenceKeys.DEFAULT_VERSION_CODE)
+                        versionNamePref.updateValue(PreferenceKeys.DEFAULT_VERSION_NAME)
                         showSavedMessage = true
                     }
                 ) {
@@ -229,8 +229,8 @@ fun VersionSettingsCard() {
                     onClick = {
                         val codeToSave = versionCodeInput.ifBlank { PreferenceKeys.DEFAULT_VERSION_CODE }
                         val nameToSave = versionNameInput.ifBlank { PreferenceKeys.DEFAULT_VERSION_NAME }
-                        versionCodePref.setValue(codeToSave)
-                        versionNamePref.setValue(nameToSave)
+                        versionCodePref.updateValue(codeToSave)
+                        versionNamePref.updateValue(nameToSave)
                         showSavedMessage = true
                     }
                 ) {

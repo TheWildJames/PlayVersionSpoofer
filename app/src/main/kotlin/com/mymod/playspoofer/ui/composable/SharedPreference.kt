@@ -66,7 +66,7 @@ class StringSharedPreference(
         if (changedKey != key) {
             return@OnSharedPreferenceChangeListener
         }
-        value = sharedPreferences.getString(key, defaultValue) ?: defaultValue
+        _value = sharedPreferences.getString(key, defaultValue) ?: defaultValue
     }
 
     init {
@@ -75,20 +75,21 @@ class StringSharedPreference(
 
     private val prefsValue get() = sharedPreferences?.getString(key, defaultValue) ?: defaultValue
 
-    var value by mutableStateOf(prefsValue)
-        private set
+    private var _value by mutableStateOf(prefsValue)
+    
+    val value: String get() = _value
 
-    fun setValue(newValue: String) {
+    fun updateValue(newValue: String) {
         CoroutineScope(Dispatchers.IO).launch {
             sharedPreferences?.edit(commit = true) { putString(key, newValue) }
-            value = newValue
+            _value = newValue
         }
     }
 
-    operator fun getValue(thisObj: Any?, property: KProperty<*>) = value
+    operator fun getValue(thisObj: Any?, property: KProperty<*>) = _value
 
     operator fun setValue(thisObj: Any?, property: KProperty<*>, value: String) {
-        setValue(value)
+        updateValue(value)
     }
 
     fun clean() {
