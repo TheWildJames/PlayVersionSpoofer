@@ -29,9 +29,22 @@
     <string name="update_available">New version available: %1$s</string>
     <string name="update_prerelease">⚠️ This is a test/pre-release build</string>
     <string name="update_download">Download</string>
-    <string name="update_view">View Release</string>
+    <string name="update_view">View</string>
+    <string name="update_dismiss">Dismiss</string>
     <string name="update_up_to_date">✓ You\'re up to date!</string>
     <string name="update_error">Error checking updates: %1$s</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">Settings</string>
+    <string name="back">Back</string>
+    <string name="update_settings_title">Update Settings</string>
+    <string name="include_prereleases">Include pre-releases</string>
+    <string name="include_prereleases_desc">Show test builds and pre-release versions</string>
+    <string name="clear_dismissed_updates">Clear dismissed updates</string>
+    <string name="clear_dismissed_updates_desc">Show previously dismissed update notifications again</string>
+    <string name="about_title">About</string>
+    <string name="version_info">Version %1$s (Build %2$d)</string>
+    <string name="github_repo">github.com/TheWildJames/PlayVersionSpoofer</string>
     
     <!-- Version Settings -->
     <string name="settings_title">Version Settings</string>

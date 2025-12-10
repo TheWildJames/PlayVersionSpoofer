@@ -22,18 +22,51 @@ data class ReleaseInfo(
 
 object UpdateChecker {
     private const val GITHUB_API_URL = "https://api.github.com/repos/TheWildJames/PlayVersionSpoofer/releases"
+    private const val PREFS_NAME = "update_checker"
+    private const val KEY_DISMISSED_TAG = "dismissed_tag"
+    private const val KEY_DISMISSED_DATE = "dismissed_date"
     
     // Current version code from BuildConfig
     val currentVersionCode: Int get() = BuildConfig.VERSION_CODE
     val currentVersionName: String get() = BuildConfig.VERSION_NAME
     
     /**
+     * Get the tag that was dismissed by the user
+     */
+    fun getDismissedTag(context: Context): String? {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_DISMISSED_TAG, null)
+    }
+    
+    /**
+     * Mark a release as dismissed (user already has it or doesn't want it)
+     */
+    fun dismissRelease(context: Context, tagName: String, publishedAt: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_DISMISSED_TAG, tagName)
+            .putString(KEY_DISMISSED_DATE, publishedAt)
+            .apply()
+    }
+    
+    /**
+     * Clear dismissed release (to show updates again)
+     */
+    fun clearDismissed(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+    }
+    
+    /**
      * Fetches the latest release from GitHub
+     * @param context Android context for checking dismissed releases
      * @param includePrerelease Whether to include pre-releases (test builds)
      */
-    suspend fun checkForUpdates(includePrerelease: Boolean = true): Result<ReleaseInfo?> {
+    suspend fun checkForUpdates(context: Context, includePrerelease: Boolean = true): Result<ReleaseInfo?> {
         return withContext(Dispatchers.IO) {
             try {
+                val dismissedTag = getDismissedTag(context)
+                
                 val url = URL(GITHUB_API_URL)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.apply {
@@ -69,6 +102,11 @@ object UpdateChecker {
                     val htmlUrl = release.getString("html_url")
                     val publishedAt = release.getString("published_at")
                     
+                    // Skip if this is the dismissed release
+                    if (tagName == dismissedTag) {
+                        continue
+                    }
+                    
                     // Find APK download URL from assets
                     var downloadUrl: String? = null
                     val assets = release.optJSONArray("assets")
@@ -93,62 +131,14 @@ object UpdateChecker {
                         publishedAt = publishedAt
                     )
                     
-                    // Check if this is a newer version
-                    if (isNewerVersion(tagName, isPrerelease, publishedAt)) {
-                        return@withContext Result.success(releaseInfo)
-                    }
-                    // Continue checking other releases - there might be a newer stable release
+                    // Return the first (newest) release that isn't dismissed
+                    return@withContext Result.success(releaseInfo)
                 }
                 
                 Result.success(null)
             } catch (e: Exception) {
                 Result.failure(e)
             }
-        }
-    }
-    
-    /**
-     * Check if the given tag represents a newer version
-     */
-    private fun isNewerVersion(tagName: String, isPrerelease: Boolean, publishedAt: String): Boolean {
-        // Skip "latest" tag - it's a rolling release that we can't version track
-        if (tagName == "latest") {
-            return false
-        }
-        
-        // Skip test builds - they use GitHub run numbers which don't match our versionCode
-        // Users can manually check GitHub releases for test builds
-        if (tagName.startsWith("test-")) {
-            return false
-        }
-        
-        // Only check proper versioned releases (v1.3, v1.4, v2.0, etc.)
-        val versionStr = tagName.removePrefix("v")
-        val parts = versionStr.split(".")
-        
-        // Must have at least major.minor format
-        if (parts.size < 2) return false
-        
-        try {
-            val remoteMajor = parts.getOrNull(0)?.toIntOrNull() ?: return false
-            val remoteMinor = parts.getOrNull(1)?.toIntOrNull() ?: return false
-            val remotePatch = parts.getOrNull(2)?.toIntOrNull() ?: 0
-            
-            val currentParts = currentVersionName.split(".")
-            val currentMajor = currentParts.getOrNull(0)?.toIntOrNull() ?: 0
-            val currentMinor = currentParts.getOrNull(1)?.toIntOrNull() ?: 0
-            val currentPatch = currentParts.getOrNull(2)?.toIntOrNull() ?: 0
-            
-            return when {
-                remoteMajor > currentMajor -> true
-                remoteMajor < currentMajor -> false
-                remoteMinor > currentMinor -> true
-                remoteMinor < currentMinor -> false
-                remotePatch > currentPatch -> true
-                else -> false
-            }
-        } catch (e: Exception) {
-            return false
         }
     }
     

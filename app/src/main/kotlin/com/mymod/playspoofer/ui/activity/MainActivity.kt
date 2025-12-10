@@ -1,5 +1,6 @@
 package com.mymod.playspoofer.ui.activity
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +49,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     
     Column(
@@ -82,11 +86,27 @@ fun MainScreen() {
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = "v${UpdateChecker.currentVersionName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "v${UpdateChecker.currentVersionName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(
+                            onClick = {
+                                context.startActivity(Intent(context, SettingsActivity::class.java))
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = stringResource(R.string.settings_screen_title),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -185,20 +205,32 @@ fun UpdateCheckerCard() {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var hasChecked by remember { mutableStateOf(false) }
     
+    // Get pre-release preference
+    val includePrereleases = remember { SettingsPrefs.getIncludePrereleases(context) }
+    
+    // Function to check for updates
+    fun checkUpdates() {
+        scope.launch {
+            isChecking = true
+            errorMessage = null
+            val includePrerelease = SettingsPrefs.getIncludePrereleases(context)
+            UpdateChecker.checkForUpdates(context, includePrerelease).fold(
+                onSuccess = { release ->
+                    updateInfo = release
+                    errorMessage = null
+                },
+                onFailure = { error ->
+                    errorMessage = error.message
+                }
+            )
+            isChecking = false
+            hasChecked = true
+        }
+    }
+    
     // Auto-check on first load
     LaunchedEffect(Unit) {
-        isChecking = true
-        UpdateChecker.checkForUpdates(includePrerelease = true).fold(
-            onSuccess = { release ->
-                updateInfo = release
-                errorMessage = null
-            },
-            onFailure = { error ->
-                errorMessage = error.message
-            }
-        )
-        isChecking = false
-        hasChecked = true
+        checkUpdates()
     }
     
     // Only show card if there's an update, error, or checking
@@ -233,25 +265,7 @@ fun UpdateCheckerCard() {
                     )
                     
                     if (!isChecking) {
-                        TextButton(
-                            onClick = {
-                                scope.launch {
-                                    isChecking = true
-                                    errorMessage = null
-                                    UpdateChecker.checkForUpdates(includePrerelease = true).fold(
-                                        onSuccess = { release ->
-                                            updateInfo = release
-                                            errorMessage = null
-                                        },
-                                        onFailure = { error ->
-                                            errorMessage = error.message
-                                        }
-                                    )
-                                    isChecking = false
-                                    hasChecked = true
-                                }
-                            }
-                        ) {
+                        TextButton(onClick = { checkUpdates() }) {
                             Text(stringResource(R.string.update_check))
                         }
                     }
@@ -301,19 +315,38 @@ fun UpdateCheckerCard() {
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            // Dismiss button
+                            OutlinedButton(
+                                onClick = {
+                                    UpdateChecker.dismissRelease(context, release.tagName, release.publishedAt)
+                                    updateInfo = null
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(stringResource(R.string.update_dismiss))
+                            }
+                            
+                            // Download button
                             if (release.downloadUrl != null) {
                                 Button(
-                                    onClick = { UpdateChecker.downloadApk(context, release) },
+                                    onClick = {
+                                        UpdateChecker.dismissRelease(context, release.tagName, release.publishedAt)
+                                        UpdateChecker.downloadApk(context, release)
+                                    },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(stringResource(R.string.update_download))
                                 }
-                            }
-                            OutlinedButton(
-                                onClick = { UpdateChecker.openReleasePage(context, release) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(stringResource(R.string.update_view))
+                            } else {
+                                Button(
+                                    onClick = {
+                                        UpdateChecker.dismissRelease(context, release.tagName, release.publishedAt)
+                                        UpdateChecker.openReleasePage(context, release)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(stringResource(R.string.update_view))
+                                }
                             }
                         }
                     }

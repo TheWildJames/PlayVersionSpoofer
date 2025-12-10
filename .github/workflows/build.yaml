@@ -46,16 +46,25 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease
+      
+      - name: Get version info
+        id: version
+        run: |
+          VERSION_NAME=$(grep 'app-versionName' gradle/libs.versions.toml | cut -d'"' -f2)
+          VERSION_CODE=$(grep 'app-versionCode' gradle/libs.versions.toml | cut -d'"' -f2)
+          echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION_NAME ($VERSION_CODE)"
           
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
           
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlayVersionSpoofer-${{ github.sha }}
-          path: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          name: PlayVersionSpoofer-v${{ steps.version.outputs.name }}-${{ github.sha }}
+          path: app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
 
       # Create/update "latest" release on every push to main
       - name: Update Latest Release
@@ -63,19 +72,18 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Latest Build
+          name: Latest Build (v${{ steps.version.outputs.name }})
           body: |
             🔄 **Latest Development Build**
             
-            Automatically updated on every push to main.
-            
+            Version: ${{ steps.version.outputs.name }} (Build ${{ steps.version.outputs.code }})
             Commit: ${{ github.sha }}
             Date: ${{ github.event.head_commit.timestamp }}
             
             ⚠️ This is the latest development build and may be unstable.
           prerelease: true
           make_latest: false
-          files: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          files: app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -85,16 +93,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: test-${{ github.run_number }}
-          name: Test Build #${{ github.run_number }}
+          name: Test Build #${{ github.run_number }} (v${{ steps.version.outputs.name }})
           body: |
             🧪 **Test Build**
             
+            Version: ${{ steps.version.outputs.name }} (Build ${{ steps.version.outputs.code }})
             Commit: ${{ github.sha }}
             Branch: ${{ github.ref_name }}
             
             This is an automated test build. Use at your own risk.
           prerelease: true
-          files: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          files: app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -103,14 +112,15 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_type == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: Release v${{ github.run_number }}
+          tag_name: v${{ steps.version.outputs.name }}
+          name: Release v${{ steps.version.outputs.name }}
           body: |
-            📦 **Release Build**
+            📦 **Release v${{ steps.version.outputs.name }}**
             
+            Build: ${{ steps.version.outputs.code }}
             Commit: ${{ github.sha }}
           prerelease: false
-          files: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          files: app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -125,6 +135,6 @@ jobs:
             
             See commit history for changes.
           prerelease: false
-          files: app/build/outputs/apk/release/PlayVersionSpoofer.apk
+          files: app/build/outputs/apk/release/PlayVersionSpoofer-v${{ steps.version.outputs.name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -29,9 +29,22 @@
     <string name="update_available">发现新版本: %1$s</string>
     <string name="update_prerelease">⚠️ 这是测试/预发布版本</string>
     <string name="update_download">下载</string>
-    <string name="update_view">查看发布</string>
+    <string name="update_view">查看</string>
+    <string name="update_dismiss">忽略</string>
     <string name="update_up_to_date">✓ 已是最新版本！</string>
     <string name="update_error">检查更新出错: %1$s</string>
+    
+    <!-- Settings Screen -->
+    <string name="settings_screen_title">设置</string>
+    <string name="back">返回</string>
+    <string name="update_settings_title">更新设置</string>
+    <string name="include_prereleases">包含预发布版本</string>
+    <string name="include_prereleases_desc">显示测试版和预发布版本</string>
+    <string name="clear_dismissed_updates">清除已忽略的更新</string>
+    <string name="clear_dismissed_updates_desc">重新显示之前忽略的更新通知</string>
+    <string name="about_title">关于</string>
+    <string name="version_info">版本 %1$s (构建 %2$d)</string>
+    <string name="github_repo">github.com/TheWildJames/PlayVersionSpoofer</string>
     
     <!-- Version Settings -->
     <string name="settings_title">版本设置</string>
